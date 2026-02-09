@@ -1,0 +1,18 @@
+{
+  "name": "web-gif-recorder",
+  "version": "1.0.0",
+  "description": "网站动图录制工具 - 录制网页动画并生成 GIF",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node src/index.js --url https://liyongjian.top/v2 --duration 5",
+    "dev": "node src/index.js --url https://liyongjian.top/v2 --duration 15"
+  },
+  "keywords": ["gif", "recorder", "puppeteer", "ffmpeg", "web-animation"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.0.0",
+    "fluent-ffmpeg": "^2.1.2"
+  }
+}
