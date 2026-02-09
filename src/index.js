@@ -25,8 +25,8 @@ Web GIF Recorder - 网站动图录制工具
    --dpi <number>           截图 DPI 倍率: 1-3 (默认: ultra=2, 其它=1)
    --format <type>          输出格式: gif 或 mp4 (默认: gif)
    --quality <level>        质量级别: ultra/high/medium/low (默认: high)
-   --params <string>        URL 参数: lang:en,theme:dark
-   --actions <string>       页面操作: click:#button,wait:1000
+  --params <string>        URL 参数: lang:en,theme:dark
+  --actions <string>       页面操作: click:#button,wait:1000
     --filename <name>        自定义文件名（不含扩展名）
    --no-cleanup             不清理临时文件
    -h, --help               显示此帮助信息

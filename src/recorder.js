@@ -20,6 +20,60 @@ class WebGifRecorder {
   }
 
   /**
+   * 智能探测页面类型
+   * @param {Page} page - Puppeteer 页面实例
+   * @param {number} viewportHeight - 视口高度
+   * @returns {Promise<{shouldScroll: boolean, method: 'native'|'wheel'}>}
+   */
+  async detectPageType(page, viewportHeight) {
+    // 1. 基础高度检测
+    const pageHeight = await page.evaluate(() => document.body.scrollHeight);
+    
+    if (pageHeight > viewportHeight * 1.5) {
+      console.log('🔍 检测结果: 普通长页面 (基于高度)');
+      return { shouldScroll: true, method: 'native' };
+    }
+
+    // 2. 视觉探测 (针对 SPA/全屏滚动网站)
+    console.log('🕵️ 页面高度较小，启动视觉探测...');
+    
+    // 记录原始状态
+    const initialBuffer = await page.screenshot({ encoding: 'binary' });
+    
+    // 模拟滚轮
+    try {
+      // 确保鼠标在视口中心
+      const viewport = page.viewport();
+      if (viewport) {
+        await page.mouse.move(viewport.width / 2, viewport.height / 2);
+      }
+      
+      await page.mouse.wheel({ deltaY: viewportHeight });
+      await page.waitForTimeout(1000); // 等待潜在的动画
+    } catch (e) {
+      // 忽略错误
+    }
+    
+    const afterScrollBuffer = await page.screenshot({ encoding: 'binary' });
+    
+    // 3. Buffer 比较
+    const hasVisualChange = Buffer.compare(initialBuffer, afterScrollBuffer) !== 0;
+    
+    if (hasVisualChange) {
+      console.log('🔍 检测结果: 隐式滚动/SPA 网站 (基于视觉变化)');
+      // 探测破坏了页面状态，需要刷新
+      console.log('🔄 刷新页面以重置状态...');
+      await page.reload({ waitUntil: 'networkidle2' });
+      await page.waitForTimeout(2000); // 等待重载稳定
+      
+      return { shouldScroll: true, method: 'wheel' };
+    }
+
+    console.log('🔍 检测结果: 固定单页 (无视觉变化)');
+    return { shouldScroll: false, method: 'native' };
+  }
+
+  /**
    * 录制网站并生成 GIF
    * @param {string} url - 网站 URL
    * @param {Object} options - 录制选项
@@ -140,11 +194,18 @@ class WebGifRecorder {
       console.log(`📏 页面高度: ${pageHeight}px, 视口高度: ${height}px`);
 
       // 智能选择录制方式
+      const detectResult = await this.detectPageType(page, height);
       let screenshotPaths;
-      if (pageHeight > height * 1.5) {
-        console.log('🔄 长页面检测，启用滚动录制...');
+
+      if (detectResult.shouldScroll) {
+        console.log(`🔄 启用${detectResult.method === 'wheel' ? '模拟滚轮' : '原生滚动'}录制...`);
         const scrollRecorder = new ScrollRecorder(page, height);
-        screenshotPaths = await scrollRecorder.captureWithScroll(duration, fps);
+        
+        if (detectResult.method === 'wheel') {
+          screenshotPaths = await scrollRecorder.captureWithWheel(duration, fps);
+        } else {
+          screenshotPaths = await scrollRecorder.captureWithScroll(duration, fps);
+        }
       } else {
         console.log('📱 短页面，固定视口录制...');
         const scrollRecorder = new ScrollRecorder(page, height);

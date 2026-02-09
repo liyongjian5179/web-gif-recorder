@@ -90,9 +90,9 @@ Shell Scripts
 - Configure viewport, user agent, and touch capabilities
 
 ### Recording Strategy
-- Automatically detect long pages (height > 1.5x viewport)
-- Use scroll recording for long pages
-- Use fixed viewport for short pages
+- **Smart Detection**: Automatically detect page type (Long Page vs SPA/Fullpage).
+- **Adaptive Rhythm**: Adjust scroll interval based on duration (1.2s - 2.0s).
+- **Visual Feedback**: Use visual probing to detect scrollability and end-of-page.
 
 ### Output File Naming
 - Include hostname, path, device type, and timestamp

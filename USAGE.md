@@ -36,6 +36,11 @@ node examples/record-gif.js \
 
 工具会自动检测页面高度。如果页面高度超过视口的 1.5 倍，会自动触发滚动录制。
 
+**自适应节奏 (Smart Rhythm)**：
+工具会根据你设置的 `--duration` 智能计算滚动速度：
+- **短录制 (10s)**：节奏紧凑，快速展示页面概览。
+- **长录制 (30s)**：节奏从容，平滑展示细节。
+
 ```bash
 # 录制长文章或落地页 (建议增加时长)
 ./record.sh --url https://example.com/long-page --duration 30
@@ -57,6 +62,23 @@ node examples/record-gif.js \
 ./record.sh \
   --url https://example.com \
   --actions "wait:1000,click:#login-btn,wait:2000"
+```
+
+## 🖱️ 场景 5：全屏滚动与 SPA 网站录制（智能自动探测）
+
+对于像小米汽车官网、Apple 官网这类使用全屏滚动（Fullpage Scroll）或单页应用（SPA）技术的网站，传统的滚动录制可能会失效。
+
+**现在，你不需要做任何额外配置！** 工具内置了**智能视觉探测 (Visual Scroll Probing)** 技术：
+
+1.  **自动识别**：当检测到页面高度较小（类似单页应用）时，工具会自动启动探测模式，识别是否需要模拟滚轮操作。
+2.  **智能节奏**：根据录制时长自动规划滚动间隔（1.2s - 2.0s）。
+3.  **自动去重**：实时监测画面变化，如果滚到底部（画面静止），会自动提前结束录制，避免无效时长。
+
+你只需要像往常一样运行命令：
+
+```bash
+# 无需参数，自动识别！
+node examples/record-gif.js --url https://www.xiaomiev.com --duration 10
 ```
 
 ## ⚖️ GIF vs MP4：如何选择？
