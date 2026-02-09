@@ -393,6 +393,25 @@ main() {
     # 解析参数
     parse_options "$@"
     
+    # 环境检查：自动安装依赖
+    if [ ! -d "node_modules" ]; then
+        echo "📦 检测到首次运行，正在为您安装依赖..."
+        npm install
+        if [ $? -ne 0 ]; then
+            echo "❌ 依赖安装失败，请检查网络或手动执行 npm install"
+            exit 1
+        fi
+        echo "✅ 依赖安装完成！"
+        echo ""
+    fi
+
+    # 环境检查：FFmpeg
+    if ! command -v ffmpeg &> /dev/null; then
+        echo "⚠️  未检测到 FFmpeg，录制可能会失败或无法生成 MP4。"
+        echo "👉 macOS 用户请运行: brew install ffmpeg"
+        echo ""
+    fi
+    
     # 参数验证
     validate_url "$URL" || exit 1
     validate_number "$DURATION" "时长" 1 60 || exit 1
