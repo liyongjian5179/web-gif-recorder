@@ -256,7 +256,7 @@ class WebGifRecorder {
           
           // 验证注入结果 (显式指定 URL，避免因页面重定向导致检测当前页面 Cookie 失败)
           const currentCookies = await page.cookies(url);
-          console.log(`🍪 已注入 Cookies (${sourceInfo}): 请求 ${validCookies.length} 个, 针对 ${url} 有效 ${currentCookies.length} 个`);
+          console.log(`🍪 已注入 Cookies (${sourceInfo}): 请求 ${validCookies.length} 个, 针对 ${urlObj.hostname} 有效 ${currentCookies.length} 个`);
           
           if (currentCookies.length === 0 && validCookies.length > 0) {
              console.warn('⚠️  警告: Cookie 注入后未生效，请检查 Domain 是否匹配');
