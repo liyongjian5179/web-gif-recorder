@@ -5,10 +5,13 @@ class ScrollRecorder {
    * 滚动录制器
    * @param {Page} page - Puppeteer 页面实例
    * @param {number} viewportHeight - 视口高度
+   * @param {string} tempDir - 临时文件保存目录
    */
-  constructor(page, viewportHeight) {
+  constructor(page, viewportHeight, tempDir = null) {
     this.page = page;
     this.viewportHeight = viewportHeight;
+    this.tempDir = tempDir || FileManager.getTempDir();
+    FileManager.ensureDir(this.tempDir);
   }
 
   /**
@@ -31,9 +34,8 @@ class ScrollRecorder {
 
     console.log(`📊 页面分析: ${stepCount} 段, 总帧 ${totalFrames}`);
 
-    const tempDir = FileManager.getTempDir();
-    FileManager.ensureDir(tempDir);
-
+    const tempDir = this.tempDir;
+    
     let frameIndex = 0;
     const screenshotPaths = [];
 
@@ -137,9 +139,8 @@ class ScrollRecorder {
 
     console.log(`📊 滚轮模式: 计划 ${stepCount} 次滚动 (间隔 ${scrollIntervalSeconds.toFixed(2)}s), 总帧 ${totalFrames}`);
 
-    const tempDir = FileManager.getTempDir();
-    FileManager.ensureDir(tempDir);
-
+    const tempDir = this.tempDir;
+    
     let frameIndex = 0;
     const screenshotPaths = [];
     const frameIntervalMs = 1000 / fps;
@@ -238,9 +239,8 @@ class ScrollRecorder {
    * @returns {Promise<string[]>} 截图文件路径数组
    */
   async captureFixed(duration, fps) {
-    const tempDir = FileManager.getTempDir();
-    FileManager.ensureDir(tempDir);
-
+    const tempDir = this.tempDir;
+    
     const frameCount = Math.max(1, Math.floor((duration / 1000) * fps));
     const screenshotPaths = [];
     const frameIntervalMs = 1000 / fps;

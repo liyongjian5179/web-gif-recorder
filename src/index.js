@@ -26,6 +26,7 @@ Web GIF Recorder - 网站动图录制工具
    --format <type>          输出格式: gif 或 mp4 (默认: gif)
    --quality <level>        质量级别: ultra/high/medium/low (默认: high)
   --params <string>        URL 参数: lang:en,theme:dark
+  --cookies <path|json>    Cookie 文件路径或 JSON 字符串 (不支持 Key=Value)
   --actions <string>       页面操作: click:#button,wait:1000
     --filename <name>        自定义文件名（不含扩展名）
    --no-cleanup             不清理临时文件
@@ -119,7 +120,7 @@ async function main() {
   const params = parseArgs(args);
 
   // 默认参数
-  const originalUrl = params.url || 'https://liyongjian.top/v2';
+  const originalUrl = params.url ? params.url.trim() : 'https://liyongjian.top/v2';
   const durationSeconds = parseInt(params.duration) || 15;
   const duration = durationSeconds * 1000; // 转换为毫秒
   const fps = parseInt(params.fps) || 15;
@@ -252,6 +253,7 @@ async function main() {
       height,
       device,
       actions: actionsStr,
+      cookies: params.cookies || '',
       noCleanup,
       filename,
       quality,

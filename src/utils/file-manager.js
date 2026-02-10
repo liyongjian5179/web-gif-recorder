@@ -58,6 +58,18 @@ class FileManager {
     return path.join(__dirname, '../../temp');
   }
 
+  /**
+   * 创建本次会话的临时目录
+   * @returns {string} 会话临时目录路径
+   */
+  static createSessionDir() {
+    const tempRoot = this.getTempDir();
+    const sessionId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sessionDir = path.join(tempRoot, sessionId);
+    this.ensureDir(sessionDir);
+    return sessionDir;
+  }
+
 
 
   /**

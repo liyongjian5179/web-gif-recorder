@@ -283,6 +283,10 @@ parse_options() {
                         PARAMS="${!OPTIND}"
                         OPTIND=$((OPTIND + 1))
                         ;;
+                    cookies)
+                        COOKIES="${!OPTIND}"
+                        OPTIND=$((OPTIND + 1))
+                        ;;
                     actions)
                         ACTIONS="${!OPTIND}"
                         OPTIND=$((OPTIND + 1))
@@ -412,6 +416,9 @@ main() {
         echo ""
     fi
     
+    # 自动清理 URL: 去除首尾空格，去除反斜杠 (修复用户输入错误)
+    URL=$(echo "$URL" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '\\')
+
     # 参数验证
     validate_url "$URL" || exit 1
     validate_number "$DURATION" "时长" 1 60 || exit 1
@@ -437,6 +444,10 @@ main() {
 
     if [ -n "$PARAMS" ]; then
         CMD_ARGS+=("--params" "$PARAMS")
+    fi
+    
+    if [ -n "$COOKIES" ]; then
+        CMD_ARGS+=("--cookies" "$COOKIES")
     fi
     
     if [ -n "$ACTIONS" ]; then

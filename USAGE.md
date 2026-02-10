@@ -81,6 +81,52 @@ node examples/record-gif.js \
 node examples/record-gif.js --url https://www.xiaomiev.com --duration 10
 ```
 
+## 🔐 场景 6：录制需要登录的网站 (Cookie 注入)
+
+对于内部系统、Grafana 看板等需要登录的网站，我们可以通过**注入 Cookie** 来跳过登录页。
+
+**重要提示**：由于安全限制，不支持直接复制 `document.cookie` 字符串。必须使用 JSON 格式。
+
+### 步骤 1：获取 Cookie (必须使用插件)
+
+为了获取完整的登录状态（包括 **HttpOnly** Cookie），**必须**使用浏览器插件导出完整的 Cookie 数据。
+
+1. 在 Chrome 中安装 **[EditThisCookie](https://chrome.google.com/webstore/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg)** 插件。
+2. 登录目标网站。
+3. 点击插件图标 -> 点击 "导出" (Export) 按钮（这会将 JSON 格式的 Cookie 复制到剪贴板）。
+4. 新建一个文件（如 `cookies.json`），将内容粘贴进去并保存。
+
+### 步骤 2：使用 Cookie 录制
+
+```bash
+# 方式 A: 使用 Cookie 文件 (推荐)
+./record.sh --url https://internal-system.com --cookies ./cookies.json
+
+# 方式 B: 直接传递 JSON 字符串 (适合 CI/CD)
+./record.sh --url https://internal-system.com --cookies '[{"domain":".example.com","name":"session_id","value":"...","path":"/","httpOnly":true,"secure":true}]'
+```
+
+> **注意**：
+> 1. 请确保导出的 JSON 中包含 `domain` 字段。
+> 2. 工具会自动处理 Domain 匹配问题，并支持父域 Cookie (SSO)。
+> 3. 为了安全，录制完成后请妥善处理或删除 Cookie 文件。
+
+## 🚀 场景 7：并发录制与自动化流水线
+
+本工具支持在 CI/CD 流水线中并行执行多个录制任务。
+
+**并发安全设计**：
+- 工具会自动为每次录制创建**独立的临时目录**（基于时间戳和随机ID）。
+- 即使同时运行 10 个录制任务，它们的截图文件也不会相互冲突。
+- 录制结束后，会自动清理各自的临时目录。
+
+```bash
+# 示例：同时录制 PC 和 移动端效果
+./record.sh --url https://example.com --device pc &
+./record.sh --url https://example.com --device mobile &
+wait
+```
+
 ## ⚖️ GIF vs MP4：如何选择？
 
 | 特性 | GIF | MP4 (推荐) |
