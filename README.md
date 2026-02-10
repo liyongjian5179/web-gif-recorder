@@ -61,12 +61,15 @@ npm install
 | `--quality` | `-q` | 质量预设: `ultra`, `high`, `medium`, `low` | `high` | `ultra` |
 | `--device` | | 设备类型: `pc` 或 `mobile` | `pc` | `mobile` |
 | `--duration` | `-d` | 录制时长 (秒) | `15` | `30` |
+| `--cookies` | `-c` | Cookie 配置文件路径 (JSON) | 无 | `./cookies.json` |
 | `--fps` | `-f` | 帧率 (5-30) | `15` | `30` |
 | `--width` | | 视口宽度 | `1280` / `375` | `1920` |
 | `--height` | | 视口高度 | `720` / `667` | `1080` |
 | `--filename` | | 自定义输出文件名 | 自动生成 | `demo-video` |
 | `--actions` | | 页面操作指令 | 无 | `click:.btn,wait:1000` |
 | `--no-cleanup`| | 保留临时文件 (调试用) | `false` | `true` |
+| `--verbose` | `-v` | 显示详细日志 | `false` | `true` |
+| `--version` | `-V` | 显示版本信息 | - | - |
 
 > **💡 关于 DPI 的说明**：
 > - **GIF 模式**：默认使用逻辑分辨率。`ultra` 模式下会使用 2x 截图再缩放，以获得抗锯齿效果。

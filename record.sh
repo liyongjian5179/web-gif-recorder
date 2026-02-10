@@ -42,6 +42,7 @@ Web GIF Recorder - 网站动图录制工具
   -m, --mobile              移动端模式 (等同于 --device mobile)
       --device <type>       设备类型: pc 或 mobile (默认: $DEFAULT_DEVICE)
   -f, --fps <number>        帧率: 5-30 FPS (默认: $DEFAULT_FPS)
+  -c, --cookies <file>      Cookie 配置文件路径 (JSON)
   -q, --quality <level>     质量级别: ultra/high/medium/low (默认: $QUALITY)
       --dpi <number>        截图 DPI 倍率: 1-3 (默认: ultra=2, 其它=1)
       --format <type>       输出格式: gif 或 mp4 (默认: gif)
@@ -52,7 +53,8 @@ Web GIF Recorder - 网站动图录制工具
        --filename <name>     自定义文件名（不含扩展名）
        --no-cleanup          不清理临时文件
   -h, --help                显示此帮助信息
-  -v, --version             显示版本信息
+  -V, --version             显示版本信息
+  -v, --verbose             显示详细日志
 
 位置参数 (向后兼容):
   ./record.sh <URL> [DURATION] [DEVICE] [PARAMS] [ACTIONS] [NO_CLEANUP] [FILENAME]
@@ -205,7 +207,7 @@ parse_options() {
                 show_help
                 exit 0
                 ;;
-            -v|--version)
+            -V|--version)
                 show_version
                 exit 0
                 ;;
@@ -216,7 +218,7 @@ parse_options() {
     local OPTIND=1
     local opt
 
-    while getopts ":u:d:f:q:mv-:" opt; do
+    while getopts ":u:d:f:q:c:mvV-:" opt; do
         case "$opt" in
             u)
                 URL="$OPTARG"
@@ -230,12 +232,18 @@ parse_options() {
             q)
                 QUALITY="$OPTARG"
                 ;;
+            c)
+                COOKIES="$OPTARG"
+                ;;
             m)
                 DEVICE="mobile"
                 ;;
-            v)
+            V)
                 show_version
                 exit 0
+                ;;
+            v)
+                VERBOSE="true"
                 ;;
             -)
                 # 长选项处理
@@ -297,6 +305,13 @@ parse_options() {
                         ;;
                     no-cleanup)
                         NO_CLEANUP="true"
+                        ;;
+                    verbose)
+                        VERBOSE="true"
+                        ;;
+                    version)
+                        show_version
+                        exit 0
                         ;;
                     help)
                         show_help
@@ -460,6 +475,10 @@ main() {
     
     if [ -n "$FILENAME" ]; then
         CMD_ARGS+=("--filename" "$FILENAME")
+    fi
+
+    if [ "$VERBOSE" = "true" ]; then
+        CMD_ARGS+=("--verbose")
     fi
     
     # 执行录制 (由 Node.js 负责所有输出)

@@ -67,11 +67,11 @@ class GifConverter {
    * @returns {Promise<string>} 文件路径
    */
   static async convert(screenshotPaths, options) {
-    const { width, height, fps, url, device = 'pc', quality = 'high', filename, format = 'gif', dpi = 1 } = options;
+    const { width, height, fps, url, device = 'pc', quality = 'high', filename, format = 'gif', dpi = 1, verbose = false } = options;
 
     // 生成文件
-    console.log(`🎨 生成 ${format.toUpperCase()}...`);
-    const outputPath = await this.convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality, filename, format, dpi);
+    if (verbose) console.log(`🎨 生成 ${format.toUpperCase()}...`);
+    const outputPath = await this.convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality, filename, format, dpi, verbose);
 
     return outputPath;
   }
@@ -88,9 +88,10 @@ class GifConverter {
    * @param {string} filename - 自定义文件名
    * @param {string} format - 输出格式
    * @param {number} dpi - DPI 倍率
+   * @param {boolean} verbose - 是否显示详细日志
    * @returns {Promise<string>} 文件路径
    */
-  static convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality = 'high', filename = null, format = 'gif', dpi = 1) {
+  static convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality = 'high', filename = null, format = 'gif', dpi = 1, verbose = false) {
     return new Promise((resolve, reject) => {
       const outputDir = FileManager.getOutputDir();
       FileManager.ensureDir(outputDir);
@@ -129,10 +130,12 @@ class GifConverter {
         outputPath = path.join(outputDir, `${urlPrefix}${urlPath}_${devicePrefix}_${timestampStr}.${format}`);
       }
       
-      console.log(`🎨 正在生成 ${format.toUpperCase()}...`);
-      console.log(`📊 输入: ${screenshotPaths.length} 帧`);
-      console.log(`📊 帧率: ${fps} FPS`);
-      console.log(`📊 分辨率: ${width}x${height}`);
+      if (verbose) {
+        console.log(`🎨 正在生成 ${format.toUpperCase()}...`);
+        console.log(`📊 输入: ${screenshotPaths.length} 帧`);
+        console.log(`📊 帧率: ${fps} FPS`);
+        console.log(`📊 分辨率: ${width}x${height}`);
+      }
       
       const qualityConfig = this.QUALITY_PRESETS[quality] || this.QUALITY_PRESETS.high;
 
@@ -147,14 +150,14 @@ class GifConverter {
 
       if (format === 'mp4') {
         // MP4 转换逻辑
-        console.log('🔧 使用 H.264 编码 (YUV420P)...');
+        // console.log('🔧 使用 H.264 编码 (YUV420P)...');
         
         // 计算 MP4 输出尺寸（确保偶数，且应用 DPI）
         const outputWidth = Math.round(width * dpi / 2) * 2;
         const outputHeight = Math.round(height * dpi / 2) * 2;
 
         if (dpi > 1) {
-             console.log(`🔍 启用高 DPI 输出: ${outputWidth}x${outputHeight}`);
+             // console.log(`🔍 启用高 DPI 输出: ${outputWidth}x${outputHeight}`);
         }
         
         command
@@ -170,11 +173,13 @@ class GifConverter {
           ]);
       } else {
         // GIF 转换逻辑
-        console.log(`🔧 质量级别: ${quality}`);
-        console.log(`📊 调色板颜色: ${qualityConfig.max_colors}`);
-        console.log(`📊 抖动算法: ${qualityConfig.dither}`);
-        console.log(`📊 锐化: ${qualityConfig.unsharp}`);
-        console.log('🔧 使用高质量调色板和抗锯齿算法...');
+        if (verbose) {
+          console.log(`🔧 质量级别: ${quality}`);
+          console.log(`📊 调色板颜色: ${qualityConfig.max_colors}`);
+          console.log(`📊 抖动算法: ${qualityConfig.dither}`);
+          console.log(`📊 锐化: ${qualityConfig.unsharp}`);
+          console.log('🔧 使用高质量调色板和抗锯齿算法...');
+        }
         
         const palettePath = path.join(outputDir, `palette_${timestamp}.png`);
         
@@ -199,25 +204,20 @@ class GifConverter {
         
         command
           .output(outputPath)
-          .videoCodec('gif')
+          .complexFilter(filterComplex)
           .outputOptions([
-            `-vf`, filterComplex,
-            `-loop`, `0`,
-            `-final_delay`, qualityConfig.final_delay,
-            `-an`
+             // '-loop', '0', 
+             `-final_delay`, `${qualityConfig.final_delay}`
           ]);
       }
 
-      command
-        .on('start', (cmd) => {
-          console.log(`📊 正在处理帧并生成 ${format.toUpperCase()}...`);
-        })
-        .on('progress', (progress) => {
-          if (progress.percent) {
-            const displayPercent = Math.min(100, Math.max(0, progress.percent));
-            process.stdout.write(`\r📊 处理进度: ${displayPercent.toFixed(1)}%`);
-          }
-        })
+      // 添加进度监控
+      command.on('progress', (progress) => {
+        if (progress.percent) {
+           const percent = Math.min(100, Math.floor(progress.percent));
+           process.stdout.write(`\r⏳ 处理进度: ${percent}%`);
+        }
+      })
         .on('end', () => {
           console.log(`\n✅ ${format.toUpperCase()} 生成完成`);
           resolve(outputPath);

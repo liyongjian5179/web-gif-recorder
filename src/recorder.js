@@ -15,6 +15,7 @@ class WebGifRecorder {
       height: 720,
       fps: 15,
       duration: 15000,
+      verbose: false, // 默认关闭详细日志
       ...options
     };
   }
@@ -30,12 +31,12 @@ class WebGifRecorder {
     const pageHeight = await page.evaluate(() => document.body.scrollHeight);
     
     if (pageHeight > viewportHeight * 1.5) {
-      console.log('🔍 检测结果: 普通长页面 (基于高度)');
+      if (this.options.verbose) console.log('🔍 检测结果: 普通长页面 (基于高度)');
       return { shouldScroll: true, method: 'native' };
     }
 
     // 2. 视觉探测 (针对 SPA/全屏滚动网站)
-    console.log('🕵️ 页面高度较小，启动视觉探测...');
+    if (this.options.verbose) console.log('🕵️ 页面高度较小，启动视觉探测...');
     
     // 记录原始状态
     const initialBuffer = await page.screenshot({ encoding: 'binary' });
@@ -60,16 +61,18 @@ class WebGifRecorder {
     const hasVisualChange = Buffer.compare(initialBuffer, afterScrollBuffer) !== 0;
     
     if (hasVisualChange) {
-      console.log('🔍 检测结果: 隐式滚动/SPA 网站 (基于视觉变化)');
+      if (this.options.verbose) {
+        console.log('🔍 检测结果: 隐式滚动/SPA 网站 (基于视觉变化)');
+        console.log('🔄 刷新页面以重置状态...');
+      }
       // 探测破坏了页面状态，需要刷新
-      console.log('🔄 刷新页面以重置状态...');
       await page.reload({ waitUntil: 'networkidle2' });
       await page.waitForTimeout(2000); // 等待重载稳定
       
       return { shouldScroll: true, method: 'wheel' };
     }
 
-    console.log('🔍 检测结果: 固定单页 (无视觉变化)');
+    if (this.options.verbose) console.log('🔍 检测结果: 固定单页 (无视觉变化)');
     return { shouldScroll: false, method: 'native' };
   }
 
@@ -100,19 +103,20 @@ class WebGifRecorder {
       filename,
       quality = 'high',
       dpi = 1,
-      format = 'gif'
+      format = 'gif',
+      verbose = this.options.verbose
     } = options;
 
-    console.log('🔍 启动浏览器...');
+    // if (verbose) console.log('🔍 启动浏览器...');
 
-    const browser = await BrowserManager.launch({ width, height, device, dpi });
+    const browser = await BrowserManager.launch({ width, height, device, dpi, verbose });
     const page = await browser.newPage();
 
     // 获取实际视口尺寸（可能被 BrowserManager 限制过）
     const viewport = page.viewport();
     if (viewport) {
       if (viewport.width !== width || viewport.height !== height) {
-        console.log(`📐 实际视口调整: ${width}x${height} → ${viewport.width}x${viewport.height}`);
+        // console.log(`📐 实际视口调整: ${width}x${height} → ${viewport.width}x${viewport.height}`);
         width = viewport.width;
         height = viewport.height;
       }
@@ -256,16 +260,16 @@ class WebGifRecorder {
           
           // 验证注入结果 (显式指定 URL，避免因页面重定向导致检测当前页面 Cookie 失败)
           const currentCookies = await page.cookies(url);
-          console.log(`🍪 已注入 Cookies (${sourceInfo}): 请求 ${validCookies.length} 个, 针对 ${urlObj.hostname} 有效 ${currentCookies.length} 个`);
+          console.log(`🍪 Cookie: 针对 ${urlObj.hostname} 有效 ${currentCookies.length} 个`);
           
           if (currentCookies.length === 0 && validCookies.length > 0) {
              console.warn('⚠️  警告: Cookie 注入后未生效，请检查 Domain 是否匹配');
-             console.log(`ℹ️  当前页面 URL: ${page.url()}`);
+             // console.log(`ℹ️  当前页面 URL: ${page.url()}`);
           }
           
           // 刷新页面以应用 Cookie -> 改为不操作，让后续的主流程 goto 重新访问
           // 因为如果当前在登录页，刷新还是登录页。我们需要重新访问目标 URL。
-          console.log('🔄 Cookie 注入完成，准备重新访问目标 URL...');
+          // console.log('🔄 Cookie 注入完成，准备重新访问目标 URL...');
           // await page.reload({ waitUntil: 'networkidle2' }); // 移除 reload
         } else {
           console.warn(`⚠️  无法解析 Cookies 参数: ${cookies}`);
@@ -292,10 +296,10 @@ class WebGifRecorder {
 
     try {
       // 访问目标网站
-      console.log('🌐 加载页面...');
+      // console.log('🌐 加载页面...');
       
       // 简单访问，不添加缓存清除参数（避免破坏主题应用）
-      console.log(`📊 访问 URL: ${url}`);
+      // console.log(`📊 访问 URL: ${url}`);
       
       await page.goto(url, { 
         waitUntil: 'networkidle2',
@@ -303,7 +307,7 @@ class WebGifRecorder {
       });
 
       // 等待页面稳定（确保主题和动画已加载）
-      console.log('⏳ 等待页面稳定...');
+      // console.log('⏳ 等待页面稳定...');
       
       // 检测主题状态（用于调试）
       const themeState = await page.evaluate(() => {
@@ -322,7 +326,7 @@ class WebGifRecorder {
         };
       });
       
-      console.log('📊 主题状态:', JSON.stringify(themeState, null, 2));
+      if (verbose) console.log('📊 主题状态:', JSON.stringify(themeState, null, 2));
       
       // 通用页面稳定等待（3-5 秒）
       // 这比硬编码的元素检测更可靠，适用于各种网站
@@ -342,7 +346,7 @@ class WebGifRecorder {
         };
       });
       
-      console.log('📊 最终主题状态:', JSON.stringify(finalThemeState, null, 2));
+      if (verbose) console.log('📊 最终主题状态:', JSON.stringify(finalThemeState, null, 2));
       console.log('✅ 页面已稳定');
 
       // 执行页面操作
@@ -353,18 +357,18 @@ class WebGifRecorder {
 
       // 获取页面信息
       const pageHeight = await page.evaluate(() => document.body.scrollHeight);
-      console.log(`📏 页面高度: ${pageHeight}px, 视口高度: ${height}px`);
+      // console.log(`📏 页面高度: ${pageHeight}px, 视口高度: ${height}px`);
 
       // 准备临时目录 (每个会话独立)
       const sessionTempDir = FileManager.createSessionDir();
-      console.log(`📁 临时目录: ${sessionTempDir}`);
+      // console.log(`📁 临时目录: ${sessionTempDir}`);
 
       // 智能选择录制方式
       const detectResult = await this.detectPageType(page, height);
       let screenshotPaths;
 
       if (detectResult.shouldScroll) {
-        console.log(`🔄 启用${detectResult.method === 'wheel' ? '模拟滚轮' : '原生滚动'}录制...`);
+        console.log(`🔄 模式: ${detectResult.method === 'wheel' ? '智能滚轮' : '原生滚动'}`);
         const scrollRecorder = new ScrollRecorder(page, height, sessionTempDir);
         
         if (detectResult.method === 'wheel') {
@@ -373,24 +377,24 @@ class WebGifRecorder {
           screenshotPaths = await scrollRecorder.captureWithScroll(duration, fps);
         }
       } else {
-        console.log('📱 短页面，固定视口录制...');
+        console.log('📱 模式: 固定视口');
         const scrollRecorder = new ScrollRecorder(page, height, sessionTempDir);
         screenshotPaths = await scrollRecorder.captureFixed(duration, fps);
       }
 
-      console.log(`📊 录制完成: ${screenshotPaths.length} 帧`);
+      console.log(`✅ 录制完成: ${screenshotPaths.length} 帧`);
 
       // 关闭浏览器
-      await BrowserManager.close(browser);
+      await BrowserManager.close(browser, verbose);
 
       // 生成 GIF/MP4
       const gifPath = await GifConverter.convert(screenshotPaths, { 
-        width, height, fps, url, device, quality, filename, format, dpi
+        width, height, fps, url, device, quality, filename, format, dpi, verbose
       });
 
       // 清理临时文件
       if (!noCleanup) {
-        console.log('🧹 清理临时文件...');
+        // console.log('🧹 清理临时文件...');
         // 仅清理本次会话的目录
         FileManager.cleanupDir(sessionTempDir, false);
       } else {
@@ -402,7 +406,7 @@ class WebGifRecorder {
 
     } catch (error) {
       // 确保关闭浏览器
-      await BrowserManager.close(browser);
+      await BrowserManager.close(browser, verbose);
       throw error;
     }
   }

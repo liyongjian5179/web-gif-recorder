@@ -7,10 +7,11 @@ class ScrollRecorder {
    * @param {number} viewportHeight - 视口高度
    * @param {string} tempDir - 临时文件保存目录
    */
-  constructor(page, viewportHeight, tempDir = null) {
+  constructor(page, viewportHeight, tempDir = null, verbose = false) {
     this.page = page;
     this.viewportHeight = viewportHeight;
     this.tempDir = tempDir || FileManager.getTempDir();
+    this.verbose = verbose;
     FileManager.ensureDir(this.tempDir);
   }
 
@@ -32,7 +33,7 @@ class ScrollRecorder {
     const framesBase = Math.floor(totalFrames / stepCount);
     const framesRemainder = totalFrames % stepCount;
 
-    console.log(`📊 页面分析: ${stepCount} 段, 总帧 ${totalFrames}`);
+    if (this.verbose) console.log(`📊 页面分析: ${stepCount} 段, 总帧 ${totalFrames}`);
 
     const tempDir = this.tempDir;
     
@@ -64,10 +65,12 @@ class ScrollRecorder {
         const filepath = FileManager.saveScreenshot(screenshot, frameIndex, tempDir);
         screenshotPaths.push(filepath);
 
-        if (frameIndex === 0) {
-          console.log(`📸 第一帧: ${screenshot.length} bytes`);
-        } else if (frameIndex === Math.floor(screenshotPaths.length / 2)) {
-          console.log(`📸 中间帧 (${frameIndex}): ${screenshot.length} bytes`);
+        if (this.verbose) {
+          if (frameIndex === 0) {
+            console.log(`📸 第一帧: ${screenshot.length} bytes`);
+          } else if (frameIndex === Math.floor(screenshotPaths.length / 2)) {
+            console.log(`📸 中间帧 (${frameIndex}): ${screenshot.length} bytes`);
+          }
         }
 
         frameIndex++;
@@ -80,7 +83,7 @@ class ScrollRecorder {
       }
     }
 
-    console.log(`📸 最后一帧 (${frameIndex - 1}): ${screenshotPaths.length > 0 ? require('fs').statSync(screenshotPaths[screenshotPaths.length - 1]).size : 0} bytes`);
+    if (this.verbose) console.log(`📸 最后一帧 (${frameIndex - 1}): ${screenshotPaths.length > 0 ? require('fs').statSync(screenshotPaths[screenshotPaths.length - 1]).size : 0} bytes`);
     
     return screenshotPaths;
   }
@@ -124,9 +127,11 @@ class ScrollRecorder {
     // 我们给予一个非常大的虚拟高度，确保逻辑上能滚完 maxScrolls
     if (totalHeight <= this.viewportHeight) {
       totalHeight = this.viewportHeight * (maxScrolls + 2);
-      console.log(`⚠️ 检测到短页面，启用智能滚动模式:`);
-      console.log(`   - 滚动间隔: ${scrollIntervalSeconds.toFixed(2)}s`);
-      console.log(`   - 预计滚动: ${maxScrolls} 屏`);
+      if (this.verbose) {
+        console.log(`⚠️ 检测到短页面，启用智能滚动模式:`);
+        console.log(`   - 滚动间隔: ${scrollIntervalSeconds.toFixed(2)}s`);
+        console.log(`   - 预计滚动: ${maxScrolls} 屏`);
+      }
     }
 
     const totalFrames = Math.max(1, Math.floor((duration / 1000) * fps));
@@ -137,7 +142,7 @@ class ScrollRecorder {
     const framesBase = Math.floor(totalFrames / stepCount);
     const framesRemainder = totalFrames % stepCount;
 
-    console.log(`📊 滚轮模式: 计划 ${stepCount} 次滚动 (间隔 ${scrollIntervalSeconds.toFixed(2)}s), 总帧 ${totalFrames}`);
+    if (this.verbose) console.log(`📊 滚轮模式: 计划 ${stepCount} 次滚动 (间隔 ${scrollIntervalSeconds.toFixed(2)}s), 总帧 ${totalFrames}`);
 
     const tempDir = this.tempDir;
     
@@ -167,7 +172,7 @@ class ScrollRecorder {
     for (let step = 0; step < stepCount; step++) {
       // 如果已经到底，直接退出循环
       if (isBottomReached) {
-        console.log(`🏁 页面已到底，提前结束录制 (Step ${step}/${stepCount})`);
+        if (this.verbose) console.log(`🏁 页面已到底，提前结束录制 (Step ${step}/${stepCount})`);
         break;
       }
 
@@ -175,7 +180,7 @@ class ScrollRecorder {
       
       // 执行滚轮操作
       if (step > 0) { // 第一段不需要滚动
-        console.log(`🖱️ 模拟滚轮向下: ${scrollDelta}px`);
+        if (this.verbose) console.log(`🖱️ 模拟滚轮向下: ${scrollDelta}px`);
         await this.page.mouse.wheel({ deltaY: scrollDelta });
         
         // 等待动画完成
@@ -199,7 +204,7 @@ class ScrollRecorder {
         // 我们只在每段的第一帧更新 lastScreenBuffer，用于下一段滚动后的比对
         if (i === 0) {
             if (lastScreenBuffer && Buffer.compare(lastScreenBuffer, screenshot) === 0 && step > 0) {
-                console.log('🛑 检测到画面静止（已到底部）');
+                if (this.verbose) console.log('🛑 检测到画面静止（已到底部）');
                 isBottomReached = true;
                 // 不要 break，把这一帧存下来作为最后一帧，然后外层循环会 break
             }
@@ -246,7 +251,7 @@ class ScrollRecorder {
     const frameIntervalMs = 1000 / fps;
     const startTime = Date.now();
 
-    console.log(`📊 固定视口录制: ${frameCount} 帧`);
+    if (this.verbose) console.log(`📊 固定视口录制: ${frameCount} 帧`);
 
     for (let i = 0; i < frameCount; i++) {
       const screenshot = await this.page.screenshot({
@@ -258,10 +263,12 @@ class ScrollRecorder {
       const filepath = FileManager.saveScreenshot(screenshot, i, tempDir);
       screenshotPaths.push(filepath);
 
-      if (i === 0) {
-        console.log(`📸 第一帧: ${screenshot.length} bytes`);
-      } else if (i === Math.floor(frameCount / 2)) {
-        console.log(`📸 中间帧 (${i}): ${screenshot.length} bytes`);
+      if (this.verbose) {
+        if (i === 0) {
+          console.log(`📸 第一帧: ${screenshot.length} bytes`);
+        } else if (i === Math.floor(frameCount / 2)) {
+          console.log(`📸 中间帧 (${i}): ${screenshot.length} bytes`);
+        }
       }
 
       const targetTime = startTime + (i + 1) * frameIntervalMs;
@@ -271,7 +278,7 @@ class ScrollRecorder {
       }
     }
 
-    console.log(`📸 最后一帧 (${frameCount - 1}): ${screenshotPaths.length > 0 ? require('fs').statSync(screenshotPaths[screenshotPaths.length - 1]).size : 0} bytes`);
+    if (this.verbose) console.log(`📸 最后一帧 (${frameCount - 1}): ${screenshotPaths.length > 0 ? require('fs').statSync(screenshotPaths[screenshotPaths.length - 1]).size : 0} bytes`);
     
     return screenshotPaths;
   }

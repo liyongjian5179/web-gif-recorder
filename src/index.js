@@ -69,11 +69,12 @@ function parseArgs(args) {
   const params = {};
   const shortToLong = {
     '-d': 'device',
-    '-h': 'help'
+    '-h': 'help',
+    '-v': 'verbose'
   };
   
   // 需要无参数的长选项
-  const noParamLongOptions = ['no-cleanup', 'help'];
+  const noParamLongOptions = ['no-cleanup', 'help', 'verbose'];
   
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -100,9 +101,11 @@ function parseArgs(args) {
         // -d 需要参数
         params.device = args[i + 1];
         i++; // 跳过下一个参数（值）
+      } else if (arg === '-v') {
+        params.verbose = true;
       } else {
         console.error(`❌ 未知的短选项: ${arg}`);
-        console.error('   支持的短选项: -d (device), -h (help)');
+        console.error('   支持的短选项: -d (device), -h (help), -v (verbose)');
         process.exit(1);
       }
     }
@@ -131,6 +134,7 @@ async function main() {
   const filename = params.filename || ''; // 自定义文件名
   const quality = (params.quality || 'high').toLowerCase();
   const format = (params.format || 'gif').toLowerCase();
+  const verbose = params.verbose === true || params.verbose === 'true'; // 是否开启详细日志
   const defaultDpi = quality === 'ultra' ? 2 : 1;
   const dpi = params.dpi !== undefined ? parseInt(params.dpi) : defaultDpi;
   
@@ -155,13 +159,13 @@ async function main() {
   const MAX_WIDTH = 1920;
   const MAX_HEIGHT = 1080;
   
-  if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
     const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
     width = Math.round(width * ratio);
     height = Math.round(height * ratio);
-    console.log(`📐 尺寸限制: ${width}x${height} (最大 ${MAX_WIDTH}x${MAX_HEIGHT})`);
+    if (verbose) console.log(`📐 尺寸限制: ${width}x${height} (最大 ${MAX_WIDTH}x${MAX_HEIGHT})`);
   } else {
-    console.log(`📐 录屏尺寸: ${width}x${height}`);
+    if (verbose) console.log(`📐 录屏尺寸: ${width}x${height}`);
   }
 
   // 验证参数
@@ -211,39 +215,31 @@ async function main() {
   }
 
   // 执行录制
-  const recorder = new WebGifRecorder();
+  const recorder = new WebGifRecorder({ verbose });
   const startTime = Date.now();
   
   try {
-    console.log('');
-    console.log('🚀 开始录制');
-    console.log(`📊 URL: ${url}`);
-    if (paramsStr) {
-      console.log(`🔧 参数: ${paramsStr}`);
+    if (verbose) {
+      console.log('');
+      console.log('🚀 开始录制');
+      console.log(`📊 URL: ${url}`);
+      if (paramsStr) console.log(`🔧 参数: ${paramsStr}`);
+      if (actionsStr) console.log(`🎬 操作: ${actionsStr}`);
+      console.log(`⏱️  时长: ${(duration / 1000).toFixed(1)}秒`);
+      console.log(`📊 帧率: ${fps} FPS`);
+      console.log(`📐 分辨率: ${width}x${height}`);
+      console.log(`🖼️  DPI: ${dpi}x`);
+      console.log(`📱 设备: ${device}`);
+      console.log(`🔧 质量: ${quality}`);
+      console.log(`🎥 格式: ${format}`);
+      if (filename) console.log(`📁 文件名: ${filename}.${format}`);
+      if (noCleanup) console.log(`⚠️  调试模式：保留临时文件`);
+      console.log('');
+    } else {
+      console.log(`🚀 启动录制: ${url}`);
+      console.log(`⚙️  配置: ${(duration / 1000).toFixed(1)}s | ${fps}fps | ${width}x${height} | ${device} | ${quality} | ${format}`);
+      console.log('');
     }
-    if (actionsStr) {
-      console.log(`🎬 操作: ${actionsStr}`);
-    }
-    console.log(`⏱️  时长: ${(duration / 1000).toFixed(1)}秒`);
-    console.log(`📊 帧率: ${fps} FPS`);
-    console.log(`📐 分辨率: ${width}x${height}`);
-    console.log(`🖼️  DPI: ${dpi}x`);
-    console.log(`📱 设备: ${device}`);
-    console.log(`🔧 质量: ${quality}`);
-    console.log(`🎥 格式: ${format}`);
-    if (filename) {
-      console.log(`📁 文件名: ${filename}.${format}`);
-    }
-    if (paramsStr) {
-      console.log(`🔧 参数: ${paramsStr}`);
-    }
-    if (actionsStr) {
-      console.log(`🎬 操作: ${actionsStr}`);
-    }
-    if (noCleanup) {
-      console.log(`⚠️  调试模式：保留临时文件`);
-    }
-    console.log('');
     
     // 执行录制
     const gifPath = await recorder.record(url, {

@@ -38,10 +38,11 @@ class BrowserManager {
       height = 720,
       headless = true,
       device = 'pc',
-      dpi = 1  // 使用 1x DPI（避免缩放损失）
+      dpi = 1,  // 使用 1x DPI（避免缩放损失）
+      verbose = false
     } = options;
 
-    console.log(`🔧 启动浏览器实例 (${device}模式, ${dpi}x DPI)...`);
+    if (verbose) console.log(`🔧 启动浏览器实例 (${device}模式, ${dpi}x DPI)...`);
 
     // 智能尺寸限制：最大 1920x1080
     const MAX_WIDTH = 1920;
@@ -55,7 +56,7 @@ class BrowserManager {
       const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
       limitedWidth = Math.round(width * ratio);
       limitedHeight = Math.round(height * ratio);
-      console.log(`📐 尺寸限制: ${width}x${height} → ${limitedWidth}x${limitedHeight}`);
+      if (verbose) console.log(`📐 尺寸限制: ${width}x${height} → ${limitedWidth}x${limitedHeight}`);
     }
 
     // 设备配置（支持高 DPI）
@@ -94,9 +95,9 @@ class BrowserManager {
 
     const executablePath = this.resolveExecutablePath();
     if (executablePath) {
-      console.log(`🔧 使用浏览器: ${executablePath}`);
+      if (verbose) console.log(`🔧 使用浏览器: ${executablePath}`);
     } else {
-      console.log('⚠️  未指定浏览器路径，使用 Puppeteer 默认浏览器');
+      if (verbose) console.log('⚠️  未指定浏览器路径，使用 Puppeteer 默认浏览器');
     }
 
     const browser = await puppeteer.launch({
@@ -138,11 +139,12 @@ class BrowserManager {
   /**
    * 关闭浏览器实例
    * @param {Browser} browser - 浏览器实例
+   * @param {boolean} verbose - 是否显示日志
    */
-  static async close(browser) {
+  static async close(browser, verbose = false) {
     if (browser) {
       await browser.close();
-      console.log('✅ 浏览器已关闭');
+      if (verbose) console.log('✅ 浏览器已关闭');
     }
   }
 }
