@@ -67,17 +67,17 @@ class GifConverter {
    * @returns {Promise<string>} 文件路径
    */
   static async convert(screenshotPaths, options) {
-    const { width, height, fps, url, device = 'pc', quality = 'high', filename, format = 'gif', dpi = 1, verbose = false } = options;
+    const { width, height, fps, url, device = 'pc', quality = 'high', filename, format = 'gif', dpi = 1, verbose = false, frame = false, theme = 'light' } = options;
 
     // 生成文件
     if (verbose) console.log(`🎨 生成 ${format.toUpperCase()}...`);
-    const outputPath = await this.convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality, filename, format, dpi, verbose);
+    const outputPath = await this.convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality, filename, format, dpi, verbose, frame, theme);
 
     return outputPath;
   }
 
   /**
-   * 生成文件（不带壳）
+   * 生成文件
    * @param {string[]} screenshotPaths - 截图文件路径数组
    * @param {number} width - 宽度
    * @param {number} height - 高度
@@ -89,9 +89,11 @@ class GifConverter {
    * @param {string} format - 输出格式
    * @param {number} dpi - DPI 倍率
    * @param {boolean} verbose - 是否显示详细日志
+   * @param {boolean} frame - 是否添加浏览器外壳
+   * @param {string} theme - 主题模式 ('light' 或 'dark')
    * @returns {Promise<string>} 文件路径
    */
-  static convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality = 'high', filename = null, format = 'gif', dpi = 1, verbose = false) {
+  static convertWithoutShell(screenshotPaths, width, height, fps, url, device, quality = 'high', filename = null, format = 'gif', dpi = 1, verbose = false, frame = false, theme = 'light') {
     return new Promise((resolve, reject) => {
       const outputDir = FileManager.getOutputDir();
       FileManager.ensureDir(outputDir);
@@ -148,6 +150,10 @@ class GifConverter {
         .input(framePattern)
         .inputOptions(['-framerate', String(fps)]);
 
+      // 浏览器外壳滤镜（已移除，改用 DOM 注入）
+      const frameFilters = [];
+
+
       if (format === 'mp4') {
         // MP4 转换逻辑
         // console.log('🔧 使用 H.264 编码 (YUV420P)...');
@@ -160,11 +166,16 @@ class GifConverter {
              // console.log(`🔍 启用高 DPI 输出: ${outputWidth}x${outputHeight}`);
         }
         
+        const videoFilters = [
+           `scale=${outputWidth}:${outputHeight}:flags=${qualityConfig.scale_flags}`,
+           ...frameFilters
+        ];
+
         command
           .output(outputPath)
           .videoCodec('libx264')
           .outputOptions([
-            `-vf`, `scale=${outputWidth}:${outputHeight}:flags=${qualityConfig.scale_flags}`,
+            `-vf`, videoFilters.join(','),
             `-pix_fmt`, `yuv420p`, // 兼容性最好的像素格式
             `-crf`, `18`,          // 高质量 CRF
             `-preset`, `slow`,     // 更好的压缩率
@@ -186,7 +197,8 @@ class GifConverter {
         // 构建优化的滤镜链
         const filterParts = [
           `fps=${fps}`,
-          `scale=${width}:${height}:flags=${qualityConfig.scale_flags}`
+          `scale=${width}:${height}:flags=${qualityConfig.scale_flags}`,
+          ...frameFilters
         ];
 
         if (qualityConfig.unsharp) {

@@ -104,7 +104,8 @@ class WebGifRecorder {
       quality = 'high',
       dpi = 1,
       format = 'gif',
-      verbose = this.options.verbose
+      verbose = this.options.verbose,
+      frame = false // 默认不添加外壳
     } = options;
 
     // if (verbose) console.log('🔍 启动浏览器...');
@@ -339,15 +340,33 @@ class WebGifRecorder {
         const body = document.body || {};
         const bodyStyles = window.getComputedStyle(body);
         
+        // 尝试从多个来源判断是否为暗色模式
+        const isDark = 
+          html.classList.contains('dark') || 
+          body.classList.contains('dark') ||
+          html.getAttribute('data-theme') === 'dark' ||
+          html.getAttribute('data-mode') === 'dark' ||
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+
         return {
-          hasDarkClass: html.classList.contains('dark'),
-          bodyBg: bodyStyles.backgroundColor,
-          bodyColor: bodyStyles.color
+          isDark,
+          bodyBg: bodyStyles.backgroundColor
         };
       });
       
       if (verbose) console.log('📊 最终主题状态:', JSON.stringify(finalThemeState, null, 2));
       console.log('✅ 页面已稳定');
+
+      // 注入浏览器外壳 (如果启用)
+      if (frame) {
+        if (verbose) console.log('🖼️  注入浏览器外壳...');
+        await this.injectBrowserShell(page, {
+          url,
+          device,
+          theme: finalThemeState.isDark ? 'dark' : 'light',
+          width
+        });
+      }
 
       // 执行页面操作
       if (actions) {
@@ -388,8 +407,19 @@ class WebGifRecorder {
       await BrowserManager.close(browser, verbose);
 
       // 生成 GIF/MP4
-      const gifPath = await GifConverter.convert(screenshotPaths, { 
-        width, height, fps, url, device, quality, filename, format, dpi, verbose
+      const gifPath = await GifConverter.convert(screenshotPaths, {
+        width,
+        height,
+        fps,
+        url,
+        device,
+        quality,
+        filename,
+        format,
+        dpi,
+        verbose,
+        frame,
+        theme: finalThemeState.isDark ? 'dark' : 'light'
       });
 
       // 清理临时文件
@@ -410,6 +440,261 @@ class WebGifRecorder {
       throw error;
     }
   }
+
+  /**
+   * 注入浏览器外壳 (Header)
+   */
+  async injectBrowserShell(page, options) {
+    const { url, device, theme, width } = options;
+    
+    await page.evaluate((url, device, theme, width) => {
+      const isMobile = device === 'mobile';
+      const isDark = theme === 'dark';
+      
+      // 样式配置
+      const colors = {
+        bg: isDark ? '#2D2D2D' : '#F0F0F0',
+        text: isDark ? '#CCCCCC' : '#555555',
+        inputBg: isDark ? '#3D3D3D' : '#FFFFFF',
+        border: isDark ? '#1F1F1F' : '#D1D1D1',
+        btnRed: '#FF5F57',
+        btnYellow: '#FFBD2E',
+        btnGreen: '#27C93F'
+      };
+
+      const topHeight = isMobile ? 88 : 40; // 移动端包含状态栏和地址栏
+
+      // 创建外壳容器
+      const shell = document.createElement('div');
+      shell.id = 'web-gif-recorder-shell';
+      Object.assign(shell.style, {
+        position: 'fixed',
+        top: '0',
+        left: '0',
+        width: '100%',
+        height: `${topHeight}px`,
+        backgroundColor: colors.bg,
+        zIndex: '2147483647', // Max z-index
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        padding: isMobile ? '0' : '0 15px',
+        boxSizing: 'border-box'
+      });
+
+      if (isMobile) {
+        // --- Mobile Style (iOS) ---
+        
+        // Status Bar (Time & Signal)
+        const statusBar = document.createElement('div');
+        Object.assign(statusBar.style, {
+          width: '100%',
+          height: '44px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0 20px',
+          boxSizing: 'border-box',
+          fontSize: '14px',
+          fontWeight: '600',
+          color: colors.text
+        });
+        
+        const time = document.createElement('span');
+        time.innerText = '9:41';
+        
+        const icons = document.createElement('div');
+        Object.assign(icons.style, {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        });
+
+        // Cellular Signal
+        const cellular = document.createElement('div');
+        cellular.innerHTML = `
+          <svg width="17" height="11" viewBox="0 0 17 11">
+            <rect x="1" y="7" width="3" height="4" rx="1" fill="${colors.text}" />
+            <rect x="5" y="5" width="3" height="6" rx="1" fill="${colors.text}" />
+            <rect x="9" y="3" width="3" height="8" rx="1" fill="${colors.text}" />
+            <rect x="13" y="1" width="3" height="10" rx="1" fill="${colors.text}" opacity="0.3" />
+          </svg>
+        `;
+        
+        // Wifi
+        const wifi = document.createElement('div');
+        wifi.innerHTML = `
+          <svg width="16" height="11" viewBox="0 0 16 11">
+             <path d="M8 11L0.5 3.5C2.5 1.5 5 0.5 8 0.5C11 0.5 13.5 1.5 15.5 3.5L8 11Z" fill="${colors.text}"/>
+          </svg>
+        `;
+
+        // Battery
+        const battery = document.createElement('div');
+        battery.innerHTML = `
+          <svg width="24" height="11" viewBox="0 0 24 11">
+            <rect x="1" y="1" width="18" height="9" rx="2.5" stroke="${colors.text}" stroke-width="1" fill="none" opacity="0.4" />
+            <rect x="1" y="1" width="18" height="9" rx="2.5" stroke="${colors.text}" stroke-width="1" fill="none" />
+            <path d="M21 4V7" stroke="${colors.text}" stroke-width="1.5" stroke-linecap="round" />
+            <rect x="3" y="3" width="12" height="5" rx="1" fill="${colors.text}" />
+          </svg>
+        `;
+
+        icons.appendChild(cellular);
+        icons.appendChild(wifi);
+        icons.appendChild(battery);
+        
+        statusBar.appendChild(time);
+        statusBar.appendChild(icons);
+        shell.appendChild(statusBar);
+
+        // Address Bar Container
+        const urlBarContainer = document.createElement('div');
+        Object.assign(urlBarContainer.style, {
+          width: '100%',
+          height: '44px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '0 15px',
+          boxSizing: 'border-box'
+        });
+
+        // URL Input
+        const urlInput = document.createElement('div');
+        Object.assign(urlInput.style, {
+          width: '100%',
+          height: '36px',
+          backgroundColor: colors.inputBg,
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: colors.text,
+          fontSize: '15px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          padding: '0 10px'
+        });
+        
+        let displayUrl = url.replace(/^https?:\/\//, '');
+        if (displayUrl.length > 25) displayUrl = displayUrl.substring(0, 25) + '...';
+        urlInput.innerHTML = `<span style="margin-right:5px">🔒</span> ${displayUrl}`;
+        
+        urlBarContainer.appendChild(urlInput);
+        shell.appendChild(urlBarContainer);
+
+      } else {
+        // --- PC Style (macOS) ---
+
+        // Traffic Lights
+        const buttons = document.createElement('div');
+        Object.assign(buttons.style, {
+          display: 'flex',
+          gap: '8px',
+          marginRight: '20px',
+          width: '60px' // Fixed width to align center
+        });
+
+        [colors.btnRed, colors.btnYellow, colors.btnGreen].forEach(c => {
+          const btn = document.createElement('div');
+          Object.assign(btn.style, {
+            width: '12px',
+            height: '12px',
+            borderRadius: '50%',
+            backgroundColor: c
+          });
+          buttons.appendChild(btn);
+        });
+        shell.appendChild(buttons);
+
+        // Address Bar
+        const urlBar = document.createElement('div');
+        Object.assign(urlBar.style, {
+          flex: '1',
+          height: '26px', // Slightly taller
+          backgroundColor: colors.inputBg,
+          borderRadius: '4px',
+          border: `1px solid ${isDark ? '#444' : '#DDD'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: colors.text,
+          fontSize: '12px',
+          maxWidth: '600px', // Limit max width
+          margin: '0 auto'
+        });
+
+        let displayUrl = url.replace(/^https?:\/\//, '');
+        if (displayUrl.length > 60) displayUrl = displayUrl.substring(0, 60) + '...';
+        urlBar.innerText = displayUrl;
+
+        shell.appendChild(urlBar);
+
+        // Right spacer to balance traffic lights
+        const spacer = document.createElement('div');
+        spacer.style.width = '60px';
+        shell.appendChild(spacer);
+      }
+
+      document.body.appendChild(shell);
+
+      // --- 核心修复：防止内容被遮挡 ---
+
+      // 1. 调整页面流，将整体内容下移
+      // 使用 margin-top 会比 padding-top 更安全，避免破坏 box-sizing
+      document.documentElement.style.marginTop = `${topHeight}px`;
+      // 确保 body 顶部没有额外的 margin 导致间距过大
+      // document.body.style.marginTop = '0px'; 
+
+      // 2. 处理 position: fixed 或 sticky 的顶部元素 (如导航栏)
+      // 这些元素是相对于视口的，不会随文档流下移，必须手动调整 top 值
+      try {
+        const allElements = document.querySelectorAll('*');
+        const shellId = 'web-gif-recorder-shell';
+        
+        allElements.forEach(el => {
+          // 跳过外壳本身及其子元素
+          if (el.id === shellId || el.closest(`#${shellId}`)) return;
+          // 跳过不可见的元素 (简单的判断)
+          if (el.style.display === 'none') return;
+
+          const style = window.getComputedStyle(el);
+          const position = style.position;
+
+          if (position === 'fixed' || position === 'sticky') {
+             const rect = el.getBoundingClientRect();
+             
+             // 只有当元素确实位于视口顶部区域时才处理 (允许 5px 的误差)
+             // 注意：fixed 元素不受 documentElement margin 的影响，所以 rect.top 应该是接近 0 的
+             if (rect.top < 5 && rect.bottom > 0) {
+               
+               // 获取当前的 top 计算值
+               const currentTop = parseFloat(style.top);
+               
+               // 如果是 'auto'，则直接设置为 topHeight
+               if (isNaN(currentTop)) {
+                 el.style.top = `${topHeight}px`;
+               } else {
+                 // 否则在原有基础上增加偏移
+                 el.style.top = `${currentTop + topHeight}px`;
+               }
+               
+               // 标记已调整，方便调试
+               el.dataset.gifRecorderAdjusted = 'true';
+             }
+          }
+        });
+      } catch (e) {
+        console.warn('⚠️  自动调整 Fixed 元素失败:', e);
+      }
+
+    }, url, device, theme, width);
+  }
+
 }
 
 module.exports = WebGifRecorder;

@@ -21,7 +21,7 @@
 
 ```bash
 # 录制 1080p 高清视频 (推荐 MP4)
-node examples/record-gif.js \
+./record.sh \
   --url https://www.google.com \
   --width 1920 --height 1080 \
   --format mp4 \
@@ -78,7 +78,7 @@ node examples/record-gif.js \
 
 ```bash
 # 无需参数，自动识别！
-node examples/record-gif.js --url https://www.xiaomiev.com --duration 10
+./record.sh --url https://www.xiaomiev.com --duration 10
 ```
 
 ## 🔐 场景 6：录制需要登录的网站 (Cookie 注入)
@@ -126,6 +126,27 @@ node examples/record-gif.js --url https://www.xiaomiev.com --duration 10
 ./record.sh --url https://example.com --device mobile &
 wait
 ```
+
+## 🎨 场景 8：添加浏览器外壳 (Browser Frame)
+
+如果你希望录制的视频看起来像是在浏览器窗口中运行，可以使用 `--frame` 参数。
+
+**✨ 外壳特性**：
+- **macOS 风格设计**：经典的红黄绿圆形按钮，高度还原 macOS 窗口质感。
+- **智能主题适配**：自动检测网站的 Light/Dark 模式，并切换对应颜色的外壳（白/黑）。
+- **移动端适配**：
+  - **PC 模式**：显示标准地址栏和窗口控制按钮。
+  - **Mobile 模式**：显示 iOS 风格状态栏（时间、信号、WiFi、电池）和地址栏。
+- **真实地址显示**：地址栏会自动显示当前录制的 URL。
+
+```bash
+# 自动添加浏览器外壳 (自动适配 PC/Mobile 和 Light/Dark)
+./record.sh --url https://example.com --frame
+
+# 移动端带壳录制 (iOS 风格)
+./record.sh --url https://m.example.com --device mobile --frame --format mp4
+```
+> **注意**：开启外壳后，视频高度会自动增加（PC +40px, Mobile +88px）。
 
 ## ⚖️ GIF vs MP4：如何选择？
 

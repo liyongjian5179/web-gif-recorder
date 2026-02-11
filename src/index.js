@@ -11,7 +11,7 @@ function showHelp() {
 Web GIF Recorder - 网站动图录制工具
 
 用法:
-  node examples/record-gif.js [选项]
+  ./record.sh [选项]
 
 必选参数:
   --url <url>              网站 URL
@@ -30,32 +30,33 @@ Web GIF Recorder - 网站动图录制工具
   --actions <string>       页面操作: click:#button,wait:1000
     --filename <name>        自定义文件名（不含扩展名）
    --no-cleanup             不清理临时文件
+   --frame                  添加浏览器外壳（Mock Shell）
    -h, --help               显示此帮助信息
 
 使用示例:
   # PC端录制
-  node examples/record-gif.js --url https://example.com --duration 10
+  ./record.sh --url https://example.com --duration 10
 
   # Mobile端录制
-  node examples/record-gif.js --url https://example.com --device mobile
+  ./record.sh --url https://example.com --device mobile
 
   # 自定义分辨率
-  node examples/record-gif.js --url https://example.com --width 1920 --height 1080
+  ./record.sh --url https://example.com --width 1920 --height 1080
 
   # 高质量录制
-  node examples/record-gif.js --url https://example.com --fps 30
+  ./record.sh --url https://example.com --fps 30
 
   # 带URL参数
-  node examples/record-gif.js --url https://example.com --params "lang:en,theme:dark"
+  ./record.sh --url https://example.com --params "lang:en,theme:dark"
 
    # 带页面操作
-   node examples/record-gif.js --url https://example.com --actions "scroll:500,click:#button"
+   ./record.sh --url https://example.com --actions "scroll:500,click:#button"
 
    # 自定义文件名
-   node examples/record-gif.js --url https://example.com --filename my-recording
+   ./record.sh --url https://example.com --filename my-recording
 
     # 调试模式（保留临时文件）
-    node examples/record-gif.js --url https://example.com --no-cleanup true
+    ./record.sh --url https://example.com --no-cleanup true
    `);
   process.exit(0);
 }
@@ -74,7 +75,7 @@ function parseArgs(args) {
   };
   
   // 需要无参数的长选项
-  const noParamLongOptions = ['no-cleanup', 'help', 'verbose'];
+  const noParamLongOptions = ['no-cleanup', 'help', 'verbose', 'frame'];
   
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -135,6 +136,7 @@ async function main() {
   const quality = (params.quality || 'high').toLowerCase();
   const format = (params.format || 'gif').toLowerCase();
   const verbose = params.verbose === true || params.verbose === 'true'; // 是否开启详细日志
+  const frame = params.frame === true || params.frame === 'true'; // 是否添加浏览器外壳
   const defaultDpi = quality === 'ultra' ? 2 : 1;
   const dpi = params.dpi !== undefined ? parseInt(params.dpi) : defaultDpi;
   
@@ -234,10 +236,11 @@ async function main() {
       console.log(`🎥 格式: ${format}`);
       if (filename) console.log(`📁 文件名: ${filename}.${format}`);
       if (noCleanup) console.log(`⚠️  调试模式：保留临时文件`);
+      if (frame) console.log(`🖼️  浏览器外壳: 已启用`);
       console.log('');
     } else {
       console.log(`🚀 启动录制: ${url}`);
-      console.log(`⚙️  配置: ${(duration / 1000).toFixed(1)}s | ${fps}fps | ${width}x${height} | ${device} | ${quality} | ${format}`);
+      console.log(`⚙️  配置: ${(duration / 1000).toFixed(1)}s | ${fps}fps | ${width}x${height} | ${device} | ${quality} | ${format}${frame ? ' | Frame' : ''}`);
       console.log('');
     }
     
@@ -254,7 +257,8 @@ async function main() {
       filename,
       quality,
       dpi,
-      format
+      format,
+      frame
     });
     
     const endTime = Date.now();
@@ -280,6 +284,9 @@ async function main() {
     console.log(`   - 设备: ${device}`);
     console.log(`   - 生成时间: ${((endTime - startTime) / 1000).toFixed(1)} 秒`);
     console.log('');
+    
+    // 强制退出进程，防止因未关闭的句柄（如 puppeteer 连接或文件流）导致挂起
+    process.exit(0);
 
   } catch (error) {
     console.error('');

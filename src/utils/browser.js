@@ -36,7 +36,6 @@ class BrowserManager {
     const {
       width = 1280,
       height = 720,
-      headless = true,
       device = 'pc',
       dpi = 1,  // 使用 1x DPI（避免缩放损失）
       verbose = false
@@ -100,10 +99,15 @@ class BrowserManager {
       if (verbose) console.log('⚠️  未指定浏览器路径，使用 Puppeteer 默认浏览器');
     }
 
+    // 计算窗口大小
+    const windowWidth = config.viewport.width;
+    const windowHeight = config.viewport.height;
+
     const browser = await puppeteer.launch({
-      headless: headless ? 'new' : false,
+      headless: 'new',
       executablePath,
       args: [
+        `--window-size=${windowWidth},${windowHeight}`,
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',

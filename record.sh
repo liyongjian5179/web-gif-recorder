@@ -25,6 +25,7 @@ DPI=""
 FORMAT="gif"
 FILENAME=""
 NO_CLEANUP="$DEFAULT_NO_CLEANUP"
+FRAME="false"
 
 # 显示帮助信息
 show_help() {
@@ -52,6 +53,7 @@ Web GIF Recorder - 网站动图录制工具
        --actions <string>    页面操作: click:#button,wait:1000
        --filename <name>     自定义文件名（不含扩展名）
        --no-cleanup          不清理临时文件
+       --frame               添加浏览器外壳（Mock Shell）
   -h, --help                显示此帮助信息
   -V, --version             显示版本信息
   -v, --verbose             显示详细日志
@@ -306,6 +308,9 @@ parse_options() {
                     no-cleanup)
                         NO_CLEANUP="true"
                         ;;
+                    frame)
+                        FRAME="true"
+                        ;;
                     verbose)
                         VERBOSE="true"
                         ;;
@@ -404,6 +409,9 @@ show_config() {
     if [ "$NO_CLEANUP" = "true" ]; then
         echo "⚠️  调试模式：保留临时文件"
     fi
+    if [ "$FRAME" = "true" ]; then
+        echo "🖼️  浏览器外壳: 已启用"
+    fi
     echo ""
 }
 
@@ -470,7 +478,11 @@ main() {
     fi
     
     if [ "$NO_CLEANUP" = "true" ]; then
-        CMD_ARGS+=("--no-cleanup" "true")
+        CMD_ARGS+=("--no-cleanup")
+    fi
+
+    if [ "$FRAME" = "true" ]; then
+        CMD_ARGS+=("--frame")
     fi
     
     if [ -n "$FILENAME" ]; then
