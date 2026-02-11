@@ -252,7 +252,7 @@ class WebGifRecorder {
              return cookie;
           });
           
-          if (validCookies.length > 0) {
+          if (validCookies.length > 0 && this.options.verbose) {
             console.log(`🍪 调试: 首个 Cookie 预览: ${JSON.stringify(validCookies[0])}`);
           }
 

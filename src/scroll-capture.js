@@ -28,7 +28,13 @@ class ScrollRecorder {
     );
 
     const totalFrames = Math.max(1, Math.floor((duration / 1000) * fps));
-    const maxSteps = Math.max(1, Math.ceil(totalHeight / this.viewportHeight));
+    
+    // 策略优化：采用“半屏滚动” (0.5倍视口)
+    // 说明：针对 Grafana 等顶部有固定筛选栏的网站，全屏滚动会导致内容被遮挡丢失。
+    // 使用半屏滚动可以保留重叠区域，确保视觉连续性。
+    const scrollStep = this.viewportHeight * 0.5;
+    const maxSteps = Math.max(1, Math.ceil(totalHeight / scrollStep));
+
     const stepCount = Math.min(maxSteps, totalFrames);
     const framesBase = Math.floor(totalFrames / stepCount);
     const framesRemainder = totalFrames % stepCount;
@@ -72,6 +78,14 @@ class ScrollRecorder {
             console.log(`📸 中间帧 (${frameIndex}): ${screenshot.length} bytes`);
           }
         }
+        
+        // 显示录制进度百分比 (每10%更新一次，避免刷屏)
+        const currentFrame = frameIndex + 1;
+        const progress = Math.floor((currentFrame / totalFrames) * 100);
+        if ((progress % 10 === 0 || currentFrame === totalFrames) && progress > 0 && progress !== this._lastProgress) {
+             process.stdout.write(`\r⏳ 录制进度: ${progress}% [${currentFrame}/${totalFrames}]`);
+             this._lastProgress = progress;
+        }
 
         frameIndex++;
 
@@ -85,6 +99,8 @@ class ScrollRecorder {
 
     if (this.verbose) console.log(`📸 最后一帧 (${frameIndex - 1}): ${screenshotPaths.length > 0 ? require('fs').statSync(screenshotPaths[screenshotPaths.length - 1]).size : 0} bytes`);
     
+    // 换行，避免进度条被覆盖
+    console.log('');
     return screenshotPaths;
   }
 
@@ -172,7 +188,12 @@ class ScrollRecorder {
     for (let step = 0; step < stepCount; step++) {
       // 如果已经到底，直接退出循环
       if (isBottomReached) {
-        if (this.verbose) console.log(`🏁 页面已到底，提前结束录制 (Step ${step}/${stepCount})`);
+        if (this.verbose) {
+          console.log(`🏁 页面已到底，提前结束录制 (Step ${step}/${stepCount})`);
+        } else {
+          // 非 verbose 模式下也显示一行提示，并强制进度到 100%
+          process.stdout.write(`\r⏳ 录制进度: 100% [提前完成: 页面已到底]\n`);
+        }
         break;
       }
 
@@ -224,6 +245,14 @@ class ScrollRecorder {
            throw e;
         }
 
+        // 显示录制进度百分比 (每10%更新一次，避免刷屏)
+        const currentFrame = frameIndex + 1;
+        const progress = Math.floor((currentFrame / totalFrames) * 100);
+        if ((progress % 10 === 0 || currentFrame === totalFrames) && progress > 0 && progress !== this._lastProgress) {
+             process.stdout.write(`\r⏳ 录制进度: ${progress}% [${currentFrame}/${totalFrames}]`);
+             this._lastProgress = progress;
+        }
+
         frameIndex++;
 
         const targetTime = startTime + frameIndex * frameIntervalMs;
@@ -234,6 +263,8 @@ class ScrollRecorder {
       }
     }
     
+    // 换行，避免进度条被覆盖
+    console.log('');
     return screenshotPaths;
   }
 
@@ -271,6 +302,14 @@ class ScrollRecorder {
         }
       }
 
+      // 显示录制进度百分比 (每10%更新一次，避免刷屏)
+      const currentFrame = i + 1;
+      const progress = Math.floor((currentFrame / frameCount) * 100);
+      if ((progress % 10 === 0 || currentFrame === frameCount) && progress > 0 && progress !== this._lastProgress) {
+           process.stdout.write(`\r⏳ 录制进度: ${progress}% [${currentFrame}/${frameCount}]`);
+           this._lastProgress = progress;
+      }
+
       const targetTime = startTime + (i + 1) * frameIntervalMs;
       const remaining = targetTime - Date.now();
       if (remaining > 0) {
@@ -280,6 +319,8 @@ class ScrollRecorder {
 
     if (this.verbose) console.log(`📸 最后一帧 (${frameCount - 1}): ${screenshotPaths.length > 0 ? require('fs').statSync(screenshotPaths[screenshotPaths.length - 1]).size : 0} bytes`);
     
+    // 换行，避免进度条被覆盖
+    console.log('');
     return screenshotPaths;
   }
 }

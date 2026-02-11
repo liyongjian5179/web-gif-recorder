@@ -212,10 +212,30 @@ class GifConverter {
       }
 
       // 添加进度监控
+      const totalFrames = screenshotPaths.length;
+      let lastPercent = 0;
+      
+      // 初始显示 0%
+      process.stdout.write(`\r⏳ 处理进度: 0% [0/${totalFrames}]`);
+      
       command.on('progress', (progress) => {
+        let percent = 0;
+        
         if (progress.percent) {
-           const percent = Math.min(100, Math.floor(progress.percent));
-           process.stdout.write(`\r⏳ 处理进度: ${percent}%`);
+          percent = Math.floor(progress.percent);
+        } else if (progress.frames && totalFrames > 0) {
+          // 某些复杂滤镜下 percent 可能不准，手动计算
+          percent = Math.floor((progress.frames / totalFrames) * 100);
+        }
+        
+        // 确保不超过 100%
+        percent = Math.min(100, Math.max(0, percent));
+        
+        // 仅在进度变化时更新，避免过度刷新
+        if (percent !== lastPercent) {
+           const frames = progress.frames || 0;
+           process.stdout.write(`\r⏳ 处理进度: ${percent}% [${frames}/${totalFrames}]`);
+           lastPercent = percent;
         }
       })
         .on('end', () => {
