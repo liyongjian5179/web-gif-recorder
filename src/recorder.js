@@ -357,17 +357,6 @@ class WebGifRecorder {
       if (verbose) console.log('📊 最终主题状态:', JSON.stringify(finalThemeState, null, 2));
       console.log('✅ 页面已稳定');
 
-      // 注入浏览器外壳 (如果启用)
-      if (frame) {
-        if (verbose) console.log('🖼️  注入浏览器外壳...');
-        await this.injectBrowserShell(page, {
-          url,
-          device,
-          theme: finalThemeState.isDark ? 'dark' : 'light',
-          width
-        });
-      }
-
       // 执行页面操作
       if (actions) {
         console.log('🎬 执行页面操作...');
@@ -384,6 +373,19 @@ class WebGifRecorder {
 
       // 智能选择录制方式
       const detectResult = await this.detectPageType(page, height);
+
+      // 注入浏览器外壳 (如果启用)
+      // 注意：必须在 detectPageType 之后注入，因为 detectPageType 可能会刷新页面 (SPA检测)，导致外壳丢失
+      if (frame) {
+        if (verbose) console.log('🖼️  注入浏览器外壳...');
+        await this.injectBrowserShell(page, {
+          url,
+          device,
+          theme: finalThemeState.isDark ? 'dark' : 'light',
+          width
+        });
+      }
+
       let screenshotPaths;
 
       if (detectResult.shouldScroll) {
